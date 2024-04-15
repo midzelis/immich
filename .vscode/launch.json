@@ -2,6 +2,34 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch Program",
+      "program": "${workspaceFolder}/server/dist/main.js",
+      "runtimeArgs": ["-r", "tsconfig-paths/register"],
+      "request": "launch",
+      "cwd": "${workspaceFolder}/server",
+      "type": "node"
+    },
+
+    // NODE_OPTIONS='--import ./hooks.js' nest start --watch --
+    {
+      "name": "Launch loader",
+      "program": "./dist/main.js",
+      // "args": ["start","--watch","--"],
+      "runtimeArgs": ["--import","./hooks.js"],
+      "request": "launch",
+      "cwd": "${workspaceFolder}/server",
+      "type": "node"
+    },
+    {
+      "name": "Launch nest",
+      "program": "./node_modules/.bin/nest",
+      "args": ["start","--watch","--"],
+      "runtimeArgs": ["--import","./hooks.js"],
+      "request": "launch",
+      "cwd": "${workspaceFolder}/server",
+      "type": "node"
+    },
+    {
       "type": "node",
       "request": "attach",
       "restart": true,
@@ -18,6 +46,8 @@
       "name": "Immich Microservices",
       "remoteRoot": "/usr/src/app",
       "localRoot": "${workspaceFolder}/server"
-    }
+    },
+    
+
   ]
 }

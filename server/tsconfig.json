@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "node16",
+    "module": "es2022",
     "strict": true,
     "declaration": true,
     "removeComments": true,
@@ -9,14 +9,37 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "target": "es2022",
-    "moduleResolution": "node16",
+    "moduleResolution": "bundler",
     "sourceMap": true,
     "outDir": "./dist",
     "incremental": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "preserveWatchOutput": true,
-    "baseUrl": "./",
+    // "baseUrl": "src",
+    "paths": {
+      "src/*": [
+        "./src/*.ts",
+        "./src/*/index.ts",
+        "./dist/*.js",
+        "./dist/*/index.js"
+      ],
+      "nestjs-otel/*": [
+        "./node_modules/nestjs-otel/*.d.ts"
+      ],
+      "exiftool-vendored/*": [
+        "./node_modules/exiftool-vendored/*.d.ts"
+      ],
+      "@nestjs/swagger/*": [
+        "./node_modules/@nestjs/swagger/*.d.ts"
+      ],
+      "@nestjs/platform-express/*": [
+        "./node_modules/@nestjs/platform-express/*.d.ts"
+      ],
+      "@nestjs/common/*": [
+        "./node_modules/@nestjs/common/*.d.ts"
+      ]
+    }
   },
   "exclude": [
     "dist",
