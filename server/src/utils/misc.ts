@@ -193,7 +193,13 @@ export const useSwagger = (app: INestApplication) => {
       },
       Metadata.API_KEY_SECURITY,
     )
-    .addServer('/api')
+    .addServer('/api', 'example', {
+      a: {
+        default: 'ab',
+        description: 'hello',
+      },
+    })
+    .addServer('https://demo.immich.app/api')
     .build();
 
   const options: SwaggerDocumentOptions = {
