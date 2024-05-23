@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum AssetMediaStatusEnum {
+  CREATED = 'created',
   REPLACED = 'replaced',
   DUPLICATE = 'duplicate',
 }

@@ -710,6 +710,69 @@ class AssetApi {
     return null;
   }
 
+  /// Performs an HTTP 'GET /asset/{id}/thumbnail' operation and returns the [Response].
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ThumbnailFormat] format:
+  ///
+  /// * [String] key:
+  Future<Response> getThumbnailBytesWithHttpInfo(String id, { ThumbnailFormat? format, String? key, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/asset/{id}/thumbnail'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (format != null) {
+      queryParams.addAll(_queryParams('', 'format', format));
+    }
+    if (key != null) {
+      queryParams.addAll(_queryParams('', 'key', key));
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ThumbnailFormat] format:
+  ///
+  /// * [String] key:
+  Future<MultipartFile?> getThumbnailBytes(String id, { ThumbnailFormat? format, String? key, }) async {
+    final response = await getThumbnailBytesWithHttpInfo(id,  format: format, key: key, );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'MultipartFile',) as MultipartFile;
+    
+    }
+    return null;
+  }
+
   /// Replace the asset with new file, without changing its id
   ///
   /// Note: This method returns the HTTP [Response].

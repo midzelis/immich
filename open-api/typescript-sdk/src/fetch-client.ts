@@ -1616,6 +1616,21 @@ export function replaceAsset({ id, key, assetMediaReplaceDto }: {
         body: assetMediaReplaceDto
     })));
 }
+export function getThumbnailBytes({ format, id, key }: {
+    format?: ThumbnailFormat;
+    id: string;
+    key?: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/asset/${encodeURIComponent(id)}/thumbnail${QS.query(QS.explode({
+        format,
+        key
+    }))}`, {
+        ...opts
+    }));
+}
 export function getAuditDeletes({ after, entityType, userId }: {
     after: string;
     entityType: EntityType;
@@ -2924,6 +2939,7 @@ export enum ThumbnailFormat {
     Webp = "WEBP"
 }
 export enum AssetMediaStatus {
+    Created = "created",
     Replaced = "replaced",
     Duplicate = "duplicate"
 }

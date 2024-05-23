@@ -1,18 +1,34 @@
-import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { AccessCore, Permission } from 'src/cores/access.core';
-import { AssetMediaResponseDto, AssetMediaStatusEnum } from 'src/dtos/asset-media-response.dto';
-import { AssetMediaReplaceDto, UploadFieldName } from 'src/dtos/asset-media.dto';
 import {
-  AssetBulkUploadCheckResponseDto, AssetRejectReason,
+  BadRequestException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { extname } from 'node:path';
+import sanitize from 'sanitize-filename';
+import { AccessCore, Permission } from 'src/cores/access.core';
+import { StorageCore, StorageFolder } from 'src/cores/storage.core';
+import {
+  AssetBulkUploadCheckResponseDto,
+  AssetMediaResponseDto,
+  AssetMediaStatusEnum,
+  AssetRejectReason,
   AssetUploadAction,
-  CheckExistingAssetsResponseDto
+  CheckExistingAssetsResponseDto,
 } from 'src/dtos/asset-media-response.dto';
 import {
   AssetBulkUploadCheckDto,
-  CheckExistingAssetsDto
+  AssetMediaReplaceDto,
+  CheckExistingAssetsDto,
+  CreateAssetMediaDto,
+  GetAssetThumbnailDto,
+  GetAssetThumbnailFormatEnum,
+  ServeFileDto,
+  UploadFieldName,
 } from 'src/dtos/asset-media.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { ASSET_CHECKSUM_CONSTRAINT, AssetEntity } from 'src/entities/asset.entity';
+import { ASSET_CHECKSUM_CONSTRAINT, AssetEntity, AssetType } from 'src/entities/asset.entity';
 import { IAccessRepository } from 'src/interfaces/access.interface';
 import { IAssetRepository } from 'src/interfaces/asset.interface';
 import { ClientEvent, IEventRepository } from 'src/interfaces/event.interface';
@@ -20,6 +36,7 @@ import { IJobRepository, JobName } from 'src/interfaces/job.interface';
 import { ILoggerRepository } from 'src/interfaces/logger.interface';
 import { IStorageRepository } from 'src/interfaces/storage.interface';
 import { IUserRepository } from 'src/interfaces/user.interface';
+import { CacheControl, ImmichFileResponse } from 'src/utils/file';
 import { mimeTypes } from 'src/utils/mime-types';
 import { fromChecksum } from 'src/utils/request';
 import { QueryFailedError } from 'typeorm';
@@ -52,6 +69,24 @@ export class AssetMediaService {
   ) {
     this.logger.setContext(AssetMediaService.name);
     this.access = AccessCore.create(accessRepository);
+  }
+
+  public async createAsset(
+    auth: AuthDto,
+    dto: CreateAssetMediaDto,
+    file: UploadFile,
+    sidecarFile?: UploadFile,
+  ): Promise<AssetMediaResponseDto> {
+    try {
+      await this.access.requirePermission(auth, Permission.ASSET_UPLOAD, auth.user.id);
+      this.requireQuota(auth, file.size);
+
+      const asset = await this.create(auth, dto, file, sidecarFile?.originalPath);
+      await this.userRepository.updateUsage(auth.user.id, file.size);
+      return { status: AssetMediaStatusEnum.CREATED, id: asset.id };
+    } catch (error: any) {
+      return await this.handleUploadError(error, auth, file, sidecarFile);
+    }
   }
 
   public async replaceAsset(
@@ -184,6 +219,45 @@ export class AssetMediaService {
     }
   }
 
+  private async create(
+    auth: AuthDto,
+    dto: CreateAssetMediaDto,
+    file: UploadFile,
+    sidecarPath?: string,
+  ): Promise<AssetEntity> {
+    const asset = await this.assetRepository.create({
+      ownerId: auth.user.id,
+
+      checksum: file.checksum,
+      originalPath: file.originalPath,
+
+      deviceAssetId: dto.deviceAssetId,
+      deviceId: dto.deviceId,
+
+      fileCreatedAt: dto.fileCreatedAt,
+      fileModifiedAt: dto.fileModifiedAt,
+      localDateTime: dto.fileCreatedAt,
+
+      type: mimeTypes.assetType(file.originalPath),
+      isFavorite: dto.isFavorite ?? false,
+      isArchived: dto.isArchived ?? false,
+      duration: dto.duration || null,
+      isVisible: dto.isVisible ?? true,
+      originalFileName: file.originalName,
+      sidecarPath: sidecarPath || null,
+      isOffline: dto.isOffline ?? false,
+    });
+
+    if (sidecarPath) {
+      await this.storageRepository.utimes(sidecarPath, new Date(), new Date(dto.fileModifiedAt));
+    }
+    await this.storageRepository.utimes(file.originalPath, new Date(), new Date(dto.fileModifiedAt));
+    await this.assetRepository.upsertExif({ assetId: asset.id, fileSizeInByte: file.size });
+    await this.jobRepository.queue({ name: JobName.METADATA_EXTRACTION, data: { id: asset.id, source: 'upload' } });
+
+    return asset;
+  }
+
   async checkExistingAssets(
     auth: AuthDto,
     checkExistingAssetsDto: CheckExistingAssetsDto,
@@ -227,5 +301,175 @@ export class AssetMediaService {
         };
       }),
     };
+  }
+
+  public async getOriginalBytes(auth: AuthDto, assetId: string, dto: ServeFileDto): Promise<ImmichFileResponse> {
+    // this is not quite right as sometimes this returns the original still
+    await this.access.requirePermission(auth, Permission.ASSET_VIEW, assetId);
+
+    const asset = await this.assetRepository.getById(assetId);
+    if (!asset) {
+      throw new NotFoundException('Asset does not exist');
+    }
+
+    const allowOriginalFile = !!(!auth.sharedLink || auth.sharedLink?.allowDownload);
+
+    const filepath =
+      asset.type === AssetType.IMAGE
+        ? this.getServePath(asset, dto, allowOriginalFile)
+        : asset.encodedVideoPath || asset.originalPath;
+
+    return new ImmichFileResponse({
+      path: filepath,
+      contentType: mimeTypes.lookup(filepath),
+      cacheControl: CacheControl.PRIVATE_WITH_CACHE,
+    });
+  }
+
+  private getThumbnailPath(asset: AssetEntity, format: GetAssetThumbnailFormatEnum) {
+    switch (format) {
+      case GetAssetThumbnailFormatEnum.WEBP: {
+        if (asset.thumbnailPath) {
+          return asset.thumbnailPath;
+        }
+        this.logger.warn(`WebP thumbnail requested but not found for asset ${asset.id}, falling back to JPEG`);
+      }
+      case GetAssetThumbnailFormatEnum.JPEG: {
+        if (!asset.previewPath) {
+          throw new NotFoundException(`No thumbnail found for asset ${asset.id}`);
+        }
+        return asset.previewPath;
+      }
+    }
+  }
+
+  async getThumbnailBytes(auth: AuthDto, assetId: string, dto: GetAssetThumbnailDto): Promise<ImmichFileResponse> {
+    await this.access.requirePermission(auth, Permission.ASSET_VIEW, assetId);
+
+    const asset = await this.assetRepository.getById(assetId);
+    if (!asset) {
+      throw new NotFoundException('Asset not found');
+    }
+
+    const filepath = this.getThumbnailPath(asset, dto.format);
+
+    return new ImmichFileResponse({
+      path: filepath,
+      contentType: mimeTypes.lookup(filepath),
+      cacheControl: CacheControl.PRIVATE_WITH_CACHE,
+    });
+  }
+
+  private getServePath(asset: AssetEntity, dto: ServeFileDto, allowOriginalFile: boolean): string {
+    const mimeType = mimeTypes.lookup(asset.originalPath);
+
+    /**
+     * Serve file viewer on the web
+     */
+    if (dto.isWeb && mimeType != 'image/gif') {
+      if (!asset.previewPath) {
+        this.logger.error('Error serving IMAGE asset for web');
+        throw new InternalServerErrorException(`Failed to serve image asset for web`, 'ServeFile');
+      }
+
+      return asset.previewPath;
+    }
+
+    /**
+     * Serve thumbnail image for both web and mobile app
+     */
+    if ((!dto.isThumb && allowOriginalFile) || (dto.isWeb && mimeType === 'image/gif')) {
+      return asset.originalPath;
+    }
+
+    if (asset.thumbnailPath && asset.thumbnailPath.length > 0) {
+      return asset.thumbnailPath;
+    }
+
+    if (!asset.previewPath) {
+      throw new Error('previewPath not set');
+    }
+
+    return asset.previewPath;
+  }
+
+  async getUploadAssetIdByChecksum(auth: AuthDto, checksum?: string): Promise<AssetMediaResponseDto | undefined> {
+    if (!checksum) {
+      return;
+    }
+
+    const duplicate = await this.assetRepository.getByChecksums(auth.user.id, [fromChecksum(checksum)]);
+    if (duplicate.length === 0) {
+      return;
+    }
+
+    return { status: AssetMediaStatusEnum.DUPLICATE, id: duplicate[0].id };
+  }
+
+  canUploadFile({ auth, fieldName, file }: UploadRequest): true {
+    this.access.requireUploadAccess(auth);
+
+    const filename = file.originalName;
+
+    switch (fieldName) {
+      case UploadFieldName.ASSET_DATA: {
+        if (mimeTypes.isAsset(filename)) {
+          return true;
+        }
+        break;
+      }
+
+      case UploadFieldName.LIVE_PHOTO_DATA: {
+        if (mimeTypes.isVideo(filename)) {
+          return true;
+        }
+        break;
+      }
+
+      case UploadFieldName.SIDECAR_DATA: {
+        if (mimeTypes.isSidecar(filename)) {
+          return true;
+        }
+        break;
+      }
+
+      case UploadFieldName.PROFILE_DATA: {
+        if (mimeTypes.isProfile(filename)) {
+          return true;
+        }
+        break;
+      }
+    }
+
+    this.logger.error(`Unsupported file type ${filename}`);
+    throw new BadRequestException(`Unsupported file type ${filename}`);
+  }
+
+  getUploadFilename({ auth, fieldName, file }: UploadRequest): string {
+    this.access.requireUploadAccess(auth);
+
+    const originalExtension = extname(file.originalName);
+
+    const lookup = {
+      [UploadFieldName.ASSET_DATA]: originalExtension,
+      [UploadFieldName.LIVE_PHOTO_DATA]: '.mov',
+      [UploadFieldName.SIDECAR_DATA]: '.xmp',
+      [UploadFieldName.PROFILE_DATA]: originalExtension,
+    };
+
+    return sanitize(`${file.uuid}${lookup[fieldName]}`);
+  }
+
+  getUploadFolder({ auth, fieldName, file }: UploadRequest): string {
+    auth = this.access.requireUploadAccess(auth);
+
+    let folder = StorageCore.getNestedFolder(StorageFolder.UPLOAD, auth.user.id, file.uuid);
+    if (fieldName === UploadFieldName.PROFILE_DATA) {
+      folder = StorageCore.getFolderLocation(StorageFolder.PROFILE, auth.user.id);
+    }
+
+    this.storageRepository.mkdirSync(folder);
+
+    return folder;
   }
 }
