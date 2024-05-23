@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  HttpCode,
   HttpStatus,
   Inject,
   Param,
   ParseFilePipe,
+  Post,
   Put,
   Res,
   UploadedFiles,
@@ -13,15 +15,24 @@ import {
 import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { EndpointLifecycle } from 'src/decorators';
-import { AssetMediaResponseDto, AssetMediaStatusEnum } from 'src/dtos/asset-media-response.dto';
-import { UpdateAssetMediaDto, UploadFieldName } from 'src/dtos/asset-media.dto';
+import {
+  AssetBulkUploadCheckResponseDto,
+  AssetMediaResponseDto,
+  AssetMediaStatusEnum,
+  CheckExistingAssetsResponseDto,
+} from 'src/dtos/asset-media-response.dto';
+import {
+  AssetBulkUploadCheckDto,
+  CheckExistingAssetsDto,
+  UpdateAssetMediaDto,
+  UploadFieldName,
+} from 'src/dtos/asset-media.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { ILoggerRepository } from 'src/interfaces/logger.interface';
 import { Auth, Authenticated } from 'src/middleware/auth.guard';
 import { FileUploadInterceptor, Route, UploadFiles, getFiles } from 'src/middleware/file-upload.interceptor';
 import { AssetMediaService } from 'src/services/asset-media.service';
 import { FileNotEmptyValidator, UUIDParamDto } from 'src/validation';
-
 @ApiTags('Asset')
 @Controller(Route.ASSET)
 export class AssetMediaController {
@@ -53,5 +64,31 @@ export class AssetMediaController {
       res.status(HttpStatus.OK);
     }
     return assetMediaResponse;
+  }
+
+  /**
+   * Checks if multiple assets exist on the server and returns all existing - used by background backup
+   */
+  @Post('/exist')
+  @HttpCode(HttpStatus.OK)
+  @Authenticated()
+  checkExistingAssets(
+    @Auth() auth: AuthDto,
+    @Body() dto: CheckExistingAssetsDto,
+  ): Promise<CheckExistingAssetsResponseDto> {
+    return this.service.checkExistingAssets(auth, dto);
+  }
+
+  /**
+   * Checks if assets exist by checksums
+   */
+  @Post('/bulk-upload-check')
+  @HttpCode(HttpStatus.OK)
+  @Authenticated()
+  checkBulkUpload(
+    @Auth() auth: AuthDto,
+    @Body() dto: AssetBulkUploadCheckDto,
+  ): Promise<AssetBulkUploadCheckResponseDto> {
+    return this.service.bulkUploadCheck(auth, dto);
   }
 }
