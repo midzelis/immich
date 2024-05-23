@@ -236,6 +236,23 @@ export type AssetBulkDeleteDto = {
     force?: boolean;
     ids: string[];
 };
+export type CreateAssetMediaDto = {
+    assetData: Blob;
+    deviceAssetId: string;
+    deviceId: string;
+    duration?: string;
+    fileCreatedAt: string;
+    fileModifiedAt: string;
+    isArchived?: boolean;
+    isFavorite?: boolean;
+    isOffline?: boolean;
+    isVisible?: boolean;
+    sidecarData?: Blob;
+};
+export type AssetMediaResponseDto = {
+    id?: string;
+    status: AssetMediaStatus;
+};
 export type AssetBulkUpdateDto = {
     dateTimeOriginal?: string;
     ids: string[];
@@ -330,10 +347,6 @@ export type UpdateAssetMediaDto = {
     duration?: string;
     fileCreatedAt: string;
     fileModifiedAt: string;
-};
-export type AssetMediaResponseDto = {
-    id?: string;
-    status: AssetMediaStatus;
 };
 export type AuditDeletesResponseDto = {
     ids: string[];
@@ -1385,6 +1398,28 @@ export function getAllAssets({ ifNoneMatch, isArchived, isFavorite, skip, take, 
         })
     }));
 }
+/**
+ * Create an asset from the binary data in the request.
+ */
+export function createAsset({ key, xImmichChecksum, createAssetMediaDto }: {
+    key?: string;
+    xImmichChecksum?: string;
+    createAssetMediaDto: CreateAssetMediaDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 201;
+        data: AssetMediaResponseDto;
+    }>(`/asset${QS.query(QS.explode({
+        key
+    }))}`, oazapfts.multipart({
+        ...opts,
+        method: "POST",
+        body: createAssetMediaDto,
+        headers: oazapfts.mergeHeaders(opts?.headers, {
+            "x-immich-checksum": xImmichChecksum
+        })
+    })));
+}
 export function updateAssets({ assetBulkUpdateDto }: {
     assetBulkUpdateDto: AssetBulkUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
@@ -1596,6 +1631,23 @@ export function updateAsset({ id, updateAssetDto }: {
         body: updateAssetDto
     })));
 }
+export function getOriginalBytes({ id, isThumb, isWeb, key }: {
+    id: string;
+    isThumb?: boolean;
+    isWeb?: boolean;
+    key?: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/asset/${encodeURIComponent(id)}/file${QS.query(QS.explode({
+        isThumb,
+        isWeb,
+        key
+    }))}`, {
+        ...opts
+    }));
+}
 /**
  * Replaces the asset with new file, without changing its id
  */
@@ -1614,6 +1666,21 @@ export function replaceAsset({ id, key, updateAssetMediaDto }: {
         method: "PUT",
         body: updateAssetMediaDto
     })));
+}
+export function getThumbnailBytes({ format, id, key }: {
+    format?: ThumbnailFormat;
+    id: string;
+    key?: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/asset/${encodeURIComponent(id)}/thumbnail${QS.query(QS.explode({
+        format,
+        key
+    }))}`, {
+        ...opts
+    }));
 }
 export function getAuditDeletes({ after, entityType, userId }: {
     after: string;
@@ -2905,6 +2972,11 @@ export enum Error {
     NotFound = "not_found",
     Unknown = "unknown"
 }
+export enum AssetMediaStatus {
+    Created = "created",
+    Replaced = "replaced",
+    Duplicate = "duplicate"
+}
 export enum Action {
     Accept = "accept",
     Reject = "reject"
@@ -2921,10 +2993,6 @@ export enum AssetJobName {
 export enum ThumbnailFormat {
     Jpeg = "JPEG",
     Webp = "WEBP"
-}
-export enum AssetMediaStatus {
-    Replaced = "replaced",
-    Duplicate = "duplicate"
 }
 export enum EntityType {
     Asset = "ASSET",
