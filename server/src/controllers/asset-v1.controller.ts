@@ -19,7 +19,7 @@ import { AssetFileUploadResponseDto } from 'src/dtos/asset-v1-response.dto';
 import { CreateAssetDto, GetAssetThumbnailDto, ServeFileDto } from 'src/dtos/asset-v1.dto';
 import { AuthDto, ImmichHeader } from 'src/dtos/auth.dto';
 import { ILoggerRepository } from 'src/interfaces/logger.interface';
-import { AssetUploadInterceptor } from 'src/middleware/asset-upload.interceptor';
+import { AssetMediaUploadInterceptor } from 'src/middleware/asset-upload.interceptor';
 import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard';
 import { FileUploadInterceptor, Route, UploadFiles, mapToUploadFile } from 'src/middleware/file-upload.interceptor';
 import { AssetServiceV1 } from 'src/services/asset-v1.service';
@@ -34,8 +34,11 @@ export class AssetControllerV1 {
     @Inject(ILoggerRepository) private logger: ILoggerRepository,
   ) {}
 
+  /**
+   * @deprecated Use POST /api/asset
+   */
   @Post('upload')
-  @UseInterceptors(AssetUploadInterceptor, FileUploadInterceptor)
+  @UseInterceptors(AssetMediaUploadInterceptor, FileUploadInterceptor)
   @ApiConsumes('multipart/form-data')
   @ApiHeader({
     name: ImmichHeader.CHECKSUM,
@@ -71,6 +74,9 @@ export class AssetControllerV1 {
     return responseDto;
   }
 
+  /**
+   * @deprecated use GET /api/asset/:id/file
+   */
   @Get('/file/:id')
   @FileResponse()
   @Authenticated({ sharedLink: true })
@@ -84,6 +90,9 @@ export class AssetControllerV1 {
     await sendFile(res, next, () => this.service.serveFile(auth, id, dto), this.logger);
   }
 
+  /**
+   * @deprecated use GET /api/asset/:id/thumbnail
+   */
   @Get('/thumbnail/:id')
   @FileResponse()
   @Authenticated({ sharedLink: true })

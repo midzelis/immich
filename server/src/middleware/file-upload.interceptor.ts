@@ -9,8 +9,7 @@ import { Observable } from 'rxjs';
 import { UploadFieldName } from 'src/dtos/asset-media.dto';
 import { ILoggerRepository } from 'src/interfaces/logger.interface';
 import { AuthRequest } from 'src/middleware/auth.guard';
-import { UploadFile } from 'src/services/asset-media.service';
-import { AssetService } from 'src/services/asset.service';
+import { AssetMediaService, UploadFile } from 'src/services/asset-media.service';
 
 export interface UploadFiles {
   assetData: ImmichFile[];
@@ -87,7 +86,7 @@ export class FileUploadInterceptor implements NestInterceptor {
 
   constructor(
     private reflect: Reflector,
-    private assetService: AssetService,
+    private assetMediaService: AssetMediaService,
     @Inject(ILoggerRepository) private logger: ILoggerRepository,
   ) {
     this.logger.setContext(FileUploadInterceptor.name);
@@ -133,18 +132,21 @@ export class FileUploadInterceptor implements NestInterceptor {
   }
 
   private fileFilter(request: AuthRequest, file: Express.Multer.File, callback: multer.FileFilterCallback) {
-    return callbackify(() => this.assetService.canUploadFile(asRequest(request, file)), callback);
+    return callbackify(() => this.assetMediaService.canUploadFile(asRequest(request, file)), callback);
   }
 
   private filename(request: AuthRequest, file: Express.Multer.File, callback: DiskStorageCallback) {
     return callbackify(
-      () => this.assetService.getUploadFilename(asRequest(request, file)),
+      () => this.assetMediaService.getUploadFilename(asRequest(request, file)),
       callback as Callback<string>,
     );
   }
 
   private destination(request: AuthRequest, file: Express.Multer.File, callback: DiskStorageCallback) {
-    return callbackify(() => this.assetService.getUploadFolder(asRequest(request, file)), callback as Callback<string>);
+    return callbackify(
+      () => this.assetMediaService.getUploadFolder(asRequest(request, file)),
+      callback as Callback<string>,
+    );
   }
 
   private handleFile(request: AuthRequest, file: Express.Multer.File, callback: Callback<Partial<ImmichFile>>) {

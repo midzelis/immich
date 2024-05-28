@@ -1,38 +1,42 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Inject,
+  Next,
   Param,
   ParseFilePipe,
   Post,
   Put,
+  Query,
   Res,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiConsumes, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { ApiBody, ApiConsumes, ApiHeader, ApiTags } from '@nestjs/swagger';
+import { NextFunction, Response } from 'express';
 import { EndpointLifecycle } from 'src/decorators';
+import { AssetMediaResponseDto, AssetMediaStatusEnum } from 'src/dtos/asset-media-response.dto';
 import {
-  AssetBulkUploadCheckResponseDto,
-  AssetMediaResponseDto,
-  AssetMediaStatusEnum,
-  CheckExistingAssetsResponseDto,
-} from 'src/dtos/asset-media-response.dto';
-import {
-  AssetBulkUploadCheckDto,
   AssetMediaReplaceDto,
-  CheckExistingAssetsDto,
+  CreateAssetMediaDto,
+  ReadOriginalBytesDto,
+  ReadThumbnailBytesDto,
   UploadFieldName,
 } from 'src/dtos/asset-media.dto';
-import { AuthDto } from 'src/dtos/auth.dto';
+import { AuthDto, ImmichHeader } from 'src/dtos/auth.dto';
 import { ILoggerRepository } from 'src/interfaces/logger.interface';
-import { Auth, Authenticated } from 'src/middleware/auth.guard';
+import { AssetMediaUploadInterceptor } from 'src/middleware/asset-upload.interceptor';
+import { Auth, Authenticated, FileResponse } from 'src/middleware/auth.guard';
 import { FileUploadInterceptor, Route, UploadFiles, getFiles } from 'src/middleware/file-upload.interceptor';
 import { AssetMediaService } from 'src/services/asset-media.service';
+import { sendFile } from 'src/utils/file';
 import { FileNotEmptyValidator, UUIDParamDto } from 'src/validation';
+
+import { AssetBulkUploadCheckResponseDto, CheckExistingAssetsResponseDto } from 'src/dtos/asset-media-response.dto';
+import { AssetBulkUploadCheckDto, CheckExistingAssetsDto } from 'src/dtos/asset-media.dto';
 
 @ApiTags('Asset')
 @Controller(Route.ASSET)
@@ -41,6 +45,33 @@ export class AssetMediaController {
     @Inject(ILoggerRepository) private logger: ILoggerRepository,
     private service: AssetMediaService,
   ) {}
+
+  @Post()
+  @UseInterceptors(AssetMediaUploadInterceptor, FileUploadInterceptor)
+  @ApiConsumes('multipart/form-data')
+  @ApiHeader({
+    name: ImmichHeader.CHECKSUM,
+    description: 'sha1 checksum that can be used for duplicate detection before the file is uploaded',
+    required: false,
+  })
+  @ApiBody({
+    type: CreateAssetMediaDto,
+  })
+  @Authenticated({ sharedLink: true })
+  @EndpointLifecycle({ addedAt: 'v1.106.0' })
+  async createAsset(
+    @Auth() auth: AuthDto,
+    @UploadedFiles(new ParseFilePipe({ validators: [new FileNotEmptyValidator(['assetData'])] })) files: UploadFiles,
+    @Body() dto: AssetMediaReplaceDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AssetMediaResponseDto> {
+    const { file, sidecarFile } = getFiles(files);
+    const assetMediaResponse = await this.service.createAsset(auth, dto, file, sidecarFile);
+    if (assetMediaResponse.status === AssetMediaStatusEnum.DUPLICATE) {
+      res.status(HttpStatus.OK);
+    }
+    return assetMediaResponse;
+  }
 
   /**
    *  Replace the asset with new file, without changing its id
@@ -90,5 +121,33 @@ export class AssetMediaController {
     @Body() dto: AssetBulkUploadCheckDto,
   ): Promise<AssetBulkUploadCheckResponseDto> {
     return this.service.bulkUploadCheck(auth, dto);
+  }
+
+  @Get(':id/file')
+  @FileResponse()
+  @Authenticated({ sharedLink: true })
+  @EndpointLifecycle({ addedAt: 'v1.106.0' })
+  async getOriginalBytes(
+    @Res() res: Response,
+    @Next() next: NextFunction,
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Query() dto: ReadOriginalBytesDto,
+  ) {
+    await sendFile(res, next, () => this.service.getOriginalBytes(auth, id, dto), this.logger);
+  }
+
+  @Get(':id/thumbnail')
+  @FileResponse()
+  @Authenticated({ sharedLink: true })
+  @EndpointLifecycle({ addedAt: 'v1.106.0' })
+  async getThumbnailBytes(
+    @Res() res: Response,
+    @Next() next: NextFunction,
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Query() dto: ReadThumbnailBytesDto,
+  ) {
+    await sendFile(res, next, () => this.service.getThumbnailBytes(auth, id, dto), this.logger);
   }
 }

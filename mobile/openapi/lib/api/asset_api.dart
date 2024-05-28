@@ -120,6 +120,162 @@ class AssetApi {
     return null;
   }
 
+  /// Performs an HTTP 'POST /asset' operation and returns the [Response].
+  /// Parameters:
+  ///
+  /// * [MultipartFile] assetData (required):
+  ///
+  /// * [String] deviceAssetId (required):
+  ///
+  /// * [String] deviceId (required):
+  ///
+  /// * [DateTime] fileCreatedAt (required):
+  ///
+  /// * [DateTime] fileModifiedAt (required):
+  ///
+  /// * [String] key:
+  ///
+  /// * [String] xImmichChecksum:
+  ///   sha1 checksum that can be used for duplicate detection before the file is uploaded
+  ///
+  /// * [String] duration:
+  ///
+  /// * [bool] isArchived:
+  ///
+  /// * [bool] isFavorite:
+  ///
+  /// * [bool] isOffline:
+  ///
+  /// * [bool] isVisible:
+  ///
+  /// * [MultipartFile] sidecarData:
+  Future<Response> createAssetWithHttpInfo(MultipartFile assetData, String deviceAssetId, String deviceId, DateTime fileCreatedAt, DateTime fileModifiedAt, { String? key, String? xImmichChecksum, String? duration, bool? isArchived, bool? isFavorite, bool? isOffline, bool? isVisible, MultipartFile? sidecarData, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/asset';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (key != null) {
+      queryParams.addAll(_queryParams('', 'key', key));
+    }
+
+    if (xImmichChecksum != null) {
+      headerParams[r'x-immich-checksum'] = parameterToString(xImmichChecksum);
+    }
+
+    const contentTypes = <String>['multipart/form-data'];
+
+    bool hasFields = false;
+    final mp = MultipartRequest('POST', Uri.parse(path));
+    if (assetData != null) {
+      hasFields = true;
+      mp.fields[r'assetData'] = assetData.field;
+      mp.files.add(assetData);
+    }
+    if (deviceAssetId != null) {
+      hasFields = true;
+      mp.fields[r'deviceAssetId'] = parameterToString(deviceAssetId);
+    }
+    if (deviceId != null) {
+      hasFields = true;
+      mp.fields[r'deviceId'] = parameterToString(deviceId);
+    }
+    if (duration != null) {
+      hasFields = true;
+      mp.fields[r'duration'] = parameterToString(duration);
+    }
+    if (fileCreatedAt != null) {
+      hasFields = true;
+      mp.fields[r'fileCreatedAt'] = parameterToString(fileCreatedAt);
+    }
+    if (fileModifiedAt != null) {
+      hasFields = true;
+      mp.fields[r'fileModifiedAt'] = parameterToString(fileModifiedAt);
+    }
+    if (isArchived != null) {
+      hasFields = true;
+      mp.fields[r'isArchived'] = parameterToString(isArchived);
+    }
+    if (isFavorite != null) {
+      hasFields = true;
+      mp.fields[r'isFavorite'] = parameterToString(isFavorite);
+    }
+    if (isOffline != null) {
+      hasFields = true;
+      mp.fields[r'isOffline'] = parameterToString(isOffline);
+    }
+    if (isVisible != null) {
+      hasFields = true;
+      mp.fields[r'isVisible'] = parameterToString(isVisible);
+    }
+    if (sidecarData != null) {
+      hasFields = true;
+      mp.fields[r'sidecarData'] = sidecarData.field;
+      mp.files.add(sidecarData);
+    }
+    if (hasFields) {
+      postBody = mp;
+    }
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Parameters:
+  ///
+  /// * [MultipartFile] assetData (required):
+  ///
+  /// * [String] deviceAssetId (required):
+  ///
+  /// * [String] deviceId (required):
+  ///
+  /// * [DateTime] fileCreatedAt (required):
+  ///
+  /// * [DateTime] fileModifiedAt (required):
+  ///
+  /// * [String] key:
+  ///
+  /// * [String] xImmichChecksum:
+  ///   sha1 checksum that can be used for duplicate detection before the file is uploaded
+  ///
+  /// * [String] duration:
+  ///
+  /// * [bool] isArchived:
+  ///
+  /// * [bool] isFavorite:
+  ///
+  /// * [bool] isOffline:
+  ///
+  /// * [bool] isVisible:
+  ///
+  /// * [MultipartFile] sidecarData:
+  Future<AssetMediaResponseDto?> createAsset(MultipartFile assetData, String deviceAssetId, String deviceId, DateTime fileCreatedAt, DateTime fileModifiedAt, { String? key, String? xImmichChecksum, String? duration, bool? isArchived, bool? isFavorite, bool? isOffline, bool? isVisible, MultipartFile? sidecarData, }) async {
+    final response = await createAssetWithHttpInfo(assetData, deviceAssetId, deviceId, fileCreatedAt, fileModifiedAt,  key: key, xImmichChecksum: xImmichChecksum, duration: duration, isArchived: isArchived, isFavorite: isFavorite, isOffline: isOffline, isVisible: isVisible, sidecarData: sidecarData, );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AssetMediaResponseDto',) as AssetMediaResponseDto;
+    
+    }
+    return null;
+  }
+
   /// Performs an HTTP 'DELETE /asset' operation and returns the [Response].
   /// Parameters:
   ///
@@ -545,6 +701,76 @@ class AssetApi {
     return null;
   }
 
+  /// Performs an HTTP 'GET /asset/{id}/file' operation and returns the [Response].
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [bool] isThumb:
+  ///
+  /// * [bool] isWeb:
+  ///
+  /// * [String] key:
+  Future<Response> getOriginalBytesWithHttpInfo(String id, { bool? isThumb, bool? isWeb, String? key, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/asset/{id}/file'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (isThumb != null) {
+      queryParams.addAll(_queryParams('', 'isThumb', isThumb));
+    }
+    if (isWeb != null) {
+      queryParams.addAll(_queryParams('', 'isWeb', isWeb));
+    }
+    if (key != null) {
+      queryParams.addAll(_queryParams('', 'key', key));
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [bool] isThumb:
+  ///
+  /// * [bool] isWeb:
+  ///
+  /// * [String] key:
+  Future<MultipartFile?> getOriginalBytes(String id, { bool? isThumb, bool? isWeb, String? key, }) async {
+    final response = await getOriginalBytesWithHttpInfo(id,  isThumb: isThumb, isWeb: isWeb, key: key, );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'MultipartFile',) as MultipartFile;
+    
+    }
+    return null;
+  }
+
   /// Performs an HTTP 'GET /asset/random' operation and returns the [Response].
   /// Parameters:
   ///
@@ -595,6 +821,69 @@ class AssetApi {
         .cast<AssetResponseDto>()
         .toList(growable: false);
 
+    }
+    return null;
+  }
+
+  /// Performs an HTTP 'GET /asset/{id}/thumbnail' operation and returns the [Response].
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ThumbnailFormat] format:
+  ///
+  /// * [String] key:
+  Future<Response> getThumbnailBytesWithHttpInfo(String id, { ThumbnailFormat? format, String? key, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/asset/{id}/thumbnail'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (format != null) {
+      queryParams.addAll(_queryParams('', 'format', format));
+    }
+    if (key != null) {
+      queryParams.addAll(_queryParams('', 'key', key));
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ThumbnailFormat] format:
+  ///
+  /// * [String] key:
+  Future<MultipartFile?> getThumbnailBytes(String id, { ThumbnailFormat? format, String? key, }) async {
+    final response = await getThumbnailBytesWithHttpInfo(id,  format: format, key: key, );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'MultipartFile',) as MultipartFile;
+    
     }
     return null;
   }

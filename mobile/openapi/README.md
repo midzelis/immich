@@ -95,6 +95,7 @@ Class | Method | HTTP request | Description
 *AlbumApi* | [**updateAlbumUser**](doc//AlbumApi.md#updatealbumuser) | **PUT** /albums/{id}/user/{userId} | 
 *AssetApi* | [**checkBulkUpload**](doc//AssetApi.md#checkbulkupload) | **POST** /asset/bulk-upload-check | 
 *AssetApi* | [**checkExistingAssets**](doc//AssetApi.md#checkexistingassets) | **POST** /asset/exist | 
+*AssetApi* | [**createAsset**](doc//AssetApi.md#createasset) | **POST** /asset | 
 *AssetApi* | [**deleteAssets**](doc//AssetApi.md#deleteassets) | **DELETE** /asset | 
 *AssetApi* | [**getAllUserAssetsByDeviceId**](doc//AssetApi.md#getalluserassetsbydeviceid) | **GET** /asset/device/{deviceId} | 
 *AssetApi* | [**getAssetInfo**](doc//AssetApi.md#getassetinfo) | **GET** /asset/{id} | 
@@ -102,7 +103,9 @@ Class | Method | HTTP request | Description
 *AssetApi* | [**getAssetThumbnail**](doc//AssetApi.md#getassetthumbnail) | **GET** /asset/thumbnail/{id} | 
 *AssetApi* | [**getMapMarkers**](doc//AssetApi.md#getmapmarkers) | **GET** /asset/map-marker | 
 *AssetApi* | [**getMemoryLane**](doc//AssetApi.md#getmemorylane) | **GET** /asset/memory-lane | 
+*AssetApi* | [**getOriginalBytes**](doc//AssetApi.md#getoriginalbytes) | **GET** /asset/{id}/file | 
 *AssetApi* | [**getRandom**](doc//AssetApi.md#getrandom) | **GET** /asset/random | 
+*AssetApi* | [**getThumbnailBytes**](doc//AssetApi.md#getthumbnailbytes) | **GET** /asset/{id}/thumbnail | 
 *AssetApi* | [**replaceAsset**](doc//AssetApi.md#replaceasset) | **PUT** /asset/{id}/file | 
 *AssetApi* | [**runAssetJobs**](doc//AssetApi.md#runassetjobs) | **POST** /asset/jobs | 
 *AssetApi* | [**serveFile**](doc//AssetApi.md#servefile) | **GET** /asset/file/{id} | 

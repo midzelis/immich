@@ -1329,6 +1329,67 @@
           "Asset"
         ]
       },
+      "post": {
+        "operationId": "createAsset",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-immich-checksum",
+            "in": "header",
+            "description": "sha1 checksum that can be used for duplicate detection before the file is uploaded",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetMediaDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetMediaResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "Asset"
+        ],
+        "x-immich-lifecycle": {
+          "addedAt": "v1.106.0"
+        }
+      },
       "put": {
         "operationId": "updateAssets",
         "parameters": [],
@@ -2098,6 +2159,76 @@
       }
     },
     "/asset/{id}/file": {
+      "get": {
+        "operationId": "getOriginalBytes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "isThumb",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "title": "Is serve thumbnail (resize) file",
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isWeb",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "title": "Is request made from web",
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "Asset"
+        ],
+        "x-immich-lifecycle": {
+          "addedAt": "v1.106.0"
+        }
+      },
       "put": {
         "description": "Replace the asset with new file, without changing its id",
         "operationId": "replaceAsset",
@@ -2136,6 +2267,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AssetMediaResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "tags": [
+          "Asset"
+        ],
+        "x-immich-lifecycle": {
+          "addedAt": "v1.106.0"
+        }
+      }
+    },
+    "/asset/{id}/thumbnail": {
+      "get": {
+        "operationId": "getThumbnailBytes",
+        "parameters": [
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ThumbnailFormat"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
                 }
               }
             },
@@ -7576,6 +7769,7 @@
       },
       "AssetMediaStatus": {
         "enum": [
+          "created",
           "replaced",
           "duplicate"
         ],
@@ -8001,6 +8195,55 @@
           "livePhotoData": {
             "format": "binary",
             "type": "string"
+          },
+          "sidecarData": {
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetData",
+          "deviceAssetId",
+          "deviceId",
+          "fileCreatedAt",
+          "fileModifiedAt"
+        ],
+        "type": "object"
+      },
+      "CreateAssetMediaDto": {
+        "properties": {
+          "assetData": {
+            "format": "binary",
+            "type": "string"
+          },
+          "deviceAssetId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "string"
+          },
+          "fileCreatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fileModifiedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "isFavorite": {
+            "type": "boolean"
+          },
+          "isOffline": {
+            "type": "boolean"
+          },
+          "isVisible": {
+            "type": "boolean"
           },
           "sidecarData": {
             "format": "binary",
