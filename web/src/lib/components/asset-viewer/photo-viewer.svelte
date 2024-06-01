@@ -8,7 +8,7 @@
   import { getBoundingBox } from '$lib/utils/people-utils';
   import { shortcuts } from '$lib/actions/shortcut';
   import { type AssetResponseDto, AssetTypeEnum } from '@immich/sdk';
-  import { useZoomImageWheel } from '@zoom-image/svelte';
+  import { useZoomImageWheel } from './wheel';
   import { onDestroy, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import LoadingSpinner from '../shared-components/loading-spinner.svelte';
