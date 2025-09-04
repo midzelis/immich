@@ -11,8 +11,6 @@ overrides:
 
 packageExtensionsChecksum: sha256-DAYr0FTkvKYnvBH4muAER9UE1FVGKhqfRU4/QwA2xPQ=
 
-pnpmfileChecksum: sha256-AG/qwrPNpmy9q60PZwCpecoYVptglTHgH+N6RKQHOM0=
-
 importers:
 
   .: {}
@@ -6612,6 +6610,7 @@ packages:
   eslint-p@0.25.0:
     resolution: {integrity: sha512-e7oYgXN/tgtoaR3tZ0R2dKyPJtf5J41hYKsgpsBtwpi0t2Cxjf3l8G2QwrXCDwQTFVXW1hmD55hAqQZxiId1XA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: ESLint has built-in support for multithread linting now. This package is no longer needed.
     hasBin: true
 
   eslint-plugin-compat@6.0.2:
@@ -16731,7 +16730,7 @@ snapshots:
   '@types/react-router@5.1.20':
     dependencies:
       '@types/history': 4.7.11
-      '@types/react': 19.1.8
+      '@types/react': 19.1.10
 
   '@types/react@19.1.10':
     dependencies:
@@ -19370,18 +19369,19 @@ snapshots:
   exiftool-vendored.exe@13.0.0:
     optional: true
 
-  exiftool-vendored.pl@13.0.1: {}
+  exiftool-vendored.pl@13.0.1:
+    optional: true
 
   exiftool-vendored@28.8.0:
     dependencies:
       '@photostructure/tz-lookup': 11.2.0
       '@types/luxon': 3.7.1
       batch-cluster: 13.0.0
-      exiftool-vendored.pl: 13.0.1
       he: 1.2.0
       luxon: 3.7.1
     optionalDependencies:
       exiftool-vendored.exe: 13.0.0
+      exiftool-vendored.pl: 13.0.1
 
   expect-type@1.2.1: {}
 
