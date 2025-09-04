@@ -6,7 +6,7 @@ version: 1.140.1+3011
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
-  flutter: 3.32.8
+  flutter: 3.35.2
 
 isar_version: &isar_version 3.1.8
 
@@ -61,13 +61,13 @@ dependencies:
   punycode: ^1.0.0
   riverpod_annotation: ^2.6.1
   scrollable_positioned_list: ^0.3.8
-  share_handler: ^0.0.22
+  share_handler: ^0.0.25
   share_plus: ^10.1.4
   sliver_tools: ^0.2.12
   socket_io_client: ^2.0.3+1
   stream_transform: ^2.1.1
   thumbhash: 0.1.0+1
-  timezone: ^0.9.4
+  timezone: ^0.10.0
   url_launcher: ^6.3.1
   uuid: ^4.5.1
   wakelock_plus: ^1.2.10
@@ -106,7 +106,7 @@ dev_dependencies:
       path: packages/isar_generator/
   integration_test:
     sdk: flutter
-  custom_lint: ^0.7.5
+  custom_lint: ^0.8.0
   riverpod_lint: ^2.6.1
   riverpod_generator: ^2.6.1
   mocktail: ^1.0.4
