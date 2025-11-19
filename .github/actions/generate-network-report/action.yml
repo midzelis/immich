@@ -1,0 +1,43 @@
+# .github/actions/generate-network-report/action.yml
+name: 'Generate Network Report'
+description: 'Generate and upload network monitoring report'
+runs:
+  using: "composite"
+  steps:
+    - name: Generate Network Report
+      shell: bash
+      run: |
+        MONITOR_LOG="/tmp/network_monitor_$GITHUB_JOB.jsonl"
+        REPORT_FILE="/tmp/network_report_$GITHUB_JOB.txt"
+
+        echo "=== Network Egress Report for $GITHUB_JOB ===" > "$REPORT_FILE"
+        echo "Generated at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+
+        if [ -f "$MONITOR_LOG" ]; then
+          echo "=== Connection Summary ===" >> "$REPORT_FILE"
+          # Parse JSONL and create summary
+          jq -r '[.url] | @csv' "$MONITOR_LOG" | sort | uniq -c | sort -rn >> "$REPORT_FILE"
+
+          echo "" >> "$REPORT_FILE"
+          echo "=== Detailed Connections ===" >> "$REPORT_FILE"
+          jq -r '"\(.timestamp) | Job: \(.job) | Step: \(.step) | \(.method) \(.url)"' "$MONITOR_LOG" >> "$REPORT_FILE"
+        else
+          echo "No network activity logged" >> "$REPORT_FILE"
+        fi
+
+        echo "" >> "$REPORT_FILE"
+        echo "=== Raw Proxy Logs (last 100 lines) ===" >> "$REPORT_FILE"
+        sudo tail -100 /var/log/tinyproxy/tinyproxy.log >> "$REPORT_FILE" 2>/dev/null || echo "No proxy logs available" >> "$REPORT_FILE"
+
+        # Display summary in GitHub Actions logs
+        echo "::group::Network Report Summary"
+        head -50 "$REPORT_FILE"
+        echo "::endgroup::"
+
+    - name: Upload Network Report
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      with:
+        name: network-report-${{ github.job }}-${{ github.run_number }}
+        path: /tmp/network_report_*.txt
+        retention-days: 7

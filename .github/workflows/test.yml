@@ -1,6 +1,12 @@
 name: Test
 on:
   workflow_dispatch:
+    inputs:
+      enable_network_monitoring:
+        description: 'Enable network egress monitoring'
+        required: false
+        type: boolean
+        default: false
   pull_request:
   push:
     branches: [main]
@@ -16,17 +22,17 @@ jobs:
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Check what should run
         id: check
         uses: immich-app/devtools/actions/pre-job@08bac802a312fc89808e0dd589271ca0974087b5 # pre-job-action-v2.0.0
         with:
-          github-token: ${{ steps.token.outputs.token }}
+          github-token: ${{ steps.token.outputs.token || github.token }}
           filters: |
             i18n:
               - 'i18n/**'
@@ -62,17 +68,21 @@ jobs:
       run:
         working-directory: ./server
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
@@ -96,6 +106,9 @@ jobs:
       - name: Run small tests & coverage
         run: pnpm test
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   cli-unit-tests:
     name: Unit Test CLI
     needs: pre-job
@@ -107,17 +120,22 @@ jobs:
       run:
         working-directory: ./cli
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -143,6 +161,9 @@ jobs:
       - name: Run unit tests & coverage
         run: pnpm test
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   cli-unit-tests-win:
     name: Unit Test CLI (Windows)
     needs: pre-job
@@ -154,17 +175,22 @@ jobs:
       run:
         working-directory: ./cli
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -185,6 +211,9 @@ jobs:
       - name: Run unit tests & coverage
         run: pnpm test
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   web-lint:
     name: Lint Web
     needs: pre-job
@@ -196,17 +225,22 @@ jobs:
       run:
         working-directory: ./web
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -229,6 +263,9 @@ jobs:
       - name: Run svelte checks
         run: pnpm check:svelte
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   web-unit-tests:
     name: Test Web
     needs: pre-job
@@ -240,17 +277,22 @@ jobs:
       run:
         working-directory: ./web
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -270,6 +312,9 @@ jobs:
       - name: Run unit tests & coverage
         run: pnpm test
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   i18n-tests:
     name: Test i18n
     needs: pre-job
@@ -278,17 +323,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -315,6 +365,9 @@ jobs:
           echo "ERROR: i18n files not up to date!"
           echo "Changed files: ${CHANGED_FILES}"
           exit 1
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   e2e-tests-lint:
     name: End-to-End Lint
     needs: pre-job
@@ -326,17 +379,22 @@ jobs:
       run:
         working-directory: ./e2e
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -361,6 +419,9 @@ jobs:
       - name: Run tsc
         run: pnpm check
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   server-medium-tests:
     name: Medium Tests (Server)
     needs: pre-job
@@ -372,18 +433,23 @@ jobs:
       run:
         working-directory: ./server
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
           submodules: 'recursive'
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -397,6 +463,9 @@ jobs:
       - name: Run medium tests
         run: pnpm test:medium
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   e2e-tests-server-cli:
     name: End-to-End Tests (Server & CLI)
     needs: pre-job
@@ -411,18 +480,23 @@ jobs:
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
           submodules: 'recursive'
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -452,6 +526,9 @@ jobs:
       - name: Run e2e tests (api & cli)
         run: pnpm test
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   e2e-tests-web:
     name: End-to-End Tests (Web)
     needs: pre-job
@@ -466,18 +543,23 @@ jobs:
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
           submodules: 'recursive'
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -510,6 +592,9 @@ jobs:
         with:
           name: e2e-web-test-results-${{ matrix.runner }}
           path: e2e/playwright-report/
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   success-check-e2e:
     name: End-to-End Tests Success
     needs: [e2e-tests-server-cli, e2e-tests-web]
@@ -528,16 +613,21 @@ jobs:
     permissions:
       contents: read
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
         with:
@@ -549,6 +639,9 @@ jobs:
       - name: Run tests
         working-directory: ./mobile
         run: flutter test -j 1
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   ml-unit-tests:
     name: Unit Test ML
     needs: pre-job
@@ -560,16 +653,21 @@ jobs:
       run:
         working-directory: ./machine-learning
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@5a7eac68fb9809dea845d802897dc5c723910fa3 # v7.1.3
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
@@ -592,6 +690,9 @@ jobs:
       - name: Run tests and coverage
         run: |
           uv run pytest --cov=immich_ml --cov-report term-missing
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   github-files-formatting:
     name: .github Files Formatting
     needs: pre-job
@@ -603,17 +704,22 @@ jobs:
       run:
         working-directory: ./.github
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -627,44 +733,60 @@ jobs:
       - name: Run formatter
         run: pnpm format
         if: ${{ !cancelled() }}
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
         with:
           ignore_paths: >-
             **/open-api/** **/openapi** **/node_modules/**
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   generated-api-up-to-date:
     name: OpenAPI Clients
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -696,6 +818,9 @@ jobs:
           echo "ERROR: Generated files not up to date!"
           echo "Changed files: ${CHANGED_FILES}"
           exit 1
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
   sql-schema-up-to-date:
     name: SQL Schema Checks
     runs-on: ubuntu-latest
@@ -716,17 +841,22 @@ jobs:
       run:
         working-directory: ./server
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
-        with:
-          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+      # - id: token
+      #   uses: immich-app/devtools/actions/create-workflow-token@da177fa133657503ddb7503f8ba53dccefec5da1 # create-workflow-token-action-v1.0.0
+      #   with:
+      #     app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+      #     private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
 
       - name: Checkout code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ steps.token.outputs.token || github.token }}
+
+      - name: Setup Network Monitoring
+        uses: ./.github/actions/setup-network-monitor
+        if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Setup pnpm
         uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       - name: Setup Node
@@ -780,6 +910,9 @@ jobs:
           echo "Changed files: ${CHANGED_FILES}"
           git diff
           exit 1
+      - name: Generate Network Report
+        uses: ./.github/actions/generate-network-report
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
 
 # mobile-integration-tests:
 #   name: Run mobile end-to-end integration tests

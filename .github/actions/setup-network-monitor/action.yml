@@ -1,0 +1,92 @@
+# .github/actions/setup-network-monitor/action.yml
+name: 'Setup Network Monitor'
+description: 'Setup tinyproxy for network egress monitoring'
+runs:
+  using: "composite"
+  steps:
+    - name: Install and Configure Tinyproxy
+      shell: bash
+      run: |
+        # Install tinyproxy
+        sudo apt-get update
+        sudo apt-get install -y tinyproxy
+
+        # Configure tinyproxy with detailed logging
+        sudo tee /etc/tinyproxy/tinyproxy.conf > /dev/null <<EOF
+        Port 8080
+        Listen 127.0.0.1
+        Timeout 600
+        LogFile "/var/log/tinyproxy/tinyproxy.log"
+        LogLevel Info
+        PidFile "/run/tinyproxy/tinyproxy.pid"
+        Allow 127.0.0.1
+        EOF
+
+        # Create log directory
+        mkdir -p /var/log/tinyproxy
+
+        sudo tinyproxy -d -c /etc/tinyproxy/tinyproxy.conf
+
+        sleep 2
+
+        echo "Checking if tinyproxy is running..."
+        if pgrep -f "tinyproxy.*8080" > /dev/null; then
+          echo "✓ Tinyproxy process is running (PID: $(pgrep -f 'tinyproxy.*8888'))"
+        else
+          echo "✗ Tinyproxy process not found!"
+        fi
+
+    - name: Setup Monitoring Script
+      shell: bash
+      run: |
+        # Create monitoring script that tracks connections
+        cat << 'SCRIPT' > /tmp/monitor_network.sh
+        #!/bin/bash
+
+        MONITOR_LOG="/tmp/network_monitor_$GITHUB_JOB.jsonl"
+        TINYPROXY_LOG="/var/log/tinyproxy/tinyproxy.log"
+
+        # Monitor tinyproxy logs and format as JSONL
+        sudo tail -F "$TINYPROXY_LOG" 2>/dev/null | while read line; do
+          if echo "$line" | grep -qE "CONNECT|GET|POST|PUT|DELETE|HEAD|PATCH"; then
+            timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+            job_name="$GITHUB_JOB"
+            step_name="${GITHUB_ACTION:-unknown}"
+
+            # Extract method and URL
+            method=$(echo "$line" | grep -oE "CONNECT|GET|POST|PUT|DELETE|HEAD|PATCH" | head -1)
+            url=$(echo "$line" | grep -oE "https?://[^ ]+" || echo "$line" | grep -oE "[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" || echo "unknown")
+
+            # Create JSON log entry
+            jq -nc \
+              --arg ts "$timestamp" \
+              --arg job "$job_name" \
+              --arg step "$step_name" \
+              --arg method "$method" \
+              --arg url "$url" \
+              --arg raw "$line" \
+              '{timestamp: $ts, job: $job, step: $step, method: $method, url: $url, raw: $raw}' >> "$MONITOR_LOG"
+          fi
+        done
+        SCRIPT
+
+        chmod +x /tmp/monitor_network.sh
+        nohup /tmp/monitor_network.sh > /dev/null 2>&1 &
+        echo $! > /tmp/monitor.pid
+
+    - name: Configure Proxy Environment
+      shell: bash
+      run: |
+        # Set proxy environment variables
+        echo "http_proxy=http://127.0.0.1:8080" >> $GITHUB_ENV
+        echo "https_proxy=http://127.0.0.1:8080" >> $GITHUB_ENV
+        echo "HTTP_PROXY=http://127.0.0.1:8080" >> $GITHUB_ENV
+        echo "HTTPS_PROXY=http://127.0.0.1:8080" >> $GITHUB_ENV
+        echo "no_proxy=localhost,127.0.0.1,::1,postgres" >> $GITHUB_ENV
+        echo "NO_PROXY=localhost,127.0.0.1,::1,postgres" >> $GITHUB_ENV
+
+        # Configure tools
+        git config --global http.proxy http://127.0.0.1:8080 || true
+        git config --global https.proxy http://127.0.0.1:8080 || true
+        npm config set proxy http://127.0.0.1:8080 || true
+        npm config set https-proxy http://127.0.0.1:8080 || true
